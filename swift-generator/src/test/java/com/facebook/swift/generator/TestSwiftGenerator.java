@@ -16,7 +16,9 @@
 package com.facebook.swift.generator;
 
 import com.google.common.collect.Lists;
+import com.google.common.io.Files;
 import com.google.common.io.Resources;
+import org.testng.annotations.Test;
 
 import java.io.File;
 
@@ -25,13 +27,14 @@ import java.io.File;
  */
 public class TestSwiftGenerator
 {
-    private static final String OUTPUT_FOLDER = System.getProperty("java.io.tmpdir") + "demo";
+    private static final String OUTPUT_FOLDER = Files.createTempDir().getPath();
 
-    public static void main(final String ... args) throws Exception
+    @Test
+    public void testGenerator() throws Exception
     {
         final SwiftGeneratorConfig config = SwiftGeneratorConfig.builder()
                         .inputBase(Resources.getResource(TestSwiftGenerator.class, "/").toURI())
-                        .outputFolder(new File(args.length == 0 ? OUTPUT_FOLDER : args[0]))
+                        .outputFolder(Files.createTempDir())
                         .generateIncludedCode(true)
                         .codeFlavor("java-immutable")
                         .addTweak(SwiftGeneratorTweak.ADD_CLOSEABLE_INTERFACE)
@@ -43,7 +46,8 @@ public class TestSwiftGenerator
         generator.parse(
                 Lists.newArrayList(
                         Resources.getResource(TestSwiftGenerator.class, "/hive/metastore.thrift").toURI(),
-                        Resources.getResource(TestSwiftGenerator.class, "/Maestro.thrift").toURI()
+                        Resources.getResource(TestSwiftGenerator.class, "/Maestro.thrift").toURI(),
+                        Resources.getResource(TestSwiftGenerator.class, "/SameFileInheritance.thrift").toURI()
                 )
         );
     }

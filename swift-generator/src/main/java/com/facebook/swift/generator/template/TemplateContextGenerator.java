@@ -59,7 +59,7 @@ public class TemplateContextGenerator
     {
         final String name = mangleJavatypeName(service.getName());
         final SwiftJavaType javaType = typeRegistry.findType(defaultNamespace, name);
-        final SwiftJavaType parentType = typeRegistry.findType(service.getParent().orNull());
+        final SwiftJavaType parentType = findParentService(service, defaultNamespace);
 
         final Set<String> javaParents = new HashSet<>();
         if (parentType != null) {
@@ -77,6 +77,29 @@ public class TemplateContextGenerator
         }
 
         return serviceContext;
+    }
+
+    private SwiftJavaType findParentService(Service service, String defaultNamespace)
+    {
+        SwiftJavaType parentService = null;
+
+        if (service.getParent().isPresent()) {
+            String parentServiceName = service.getParent().get();
+            String parentServiceNamespace;
+
+            int namespaceEnd = parentServiceName.lastIndexOf(".");
+            if (namespaceEnd != -1) {
+                parentServiceNamespace = parentServiceName.substring(0, namespaceEnd);
+                parentServiceName = parentServiceName.substring(namespaceEnd+1);
+            }
+            else {
+                parentServiceNamespace = defaultNamespace;
+            }
+
+            parentService = typeRegistry.findType(parentServiceNamespace, parentServiceName);
+        }
+
+        return parentService;
     }
 
     public StructContext structFromThrift(final AbstractStruct struct)
