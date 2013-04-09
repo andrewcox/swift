@@ -39,7 +39,6 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocolException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
-import org.jboss.netty.channel.Channel;
 
 import java.io.Closeable;
 import java.lang.reflect.InvocationHandler;
@@ -226,8 +225,7 @@ public class ThriftClientManager implements Closeable
         NiftyClientChannel niftyChannel = getNiftyChannel(client);
 
         try {
-            Channel nettyChannel = niftyChannel.getNettyChannel();
-            SocketAddress address = nettyChannel.getRemoteAddress();
+            SocketAddress address = niftyChannel.getRemoteAddress();
             InetSocketAddress inetAddress = (InetSocketAddress) address;
             return HostAndPort.fromParts(inetAddress.getHostName(), inetAddress.getPort());
         }

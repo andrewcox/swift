@@ -47,7 +47,7 @@ public class SuiteBase<ServiceInterface, ClientInterface> {
     }
 
     @BeforeClass
-    public void setupSuite() throws InstantiationException, IllegalAccessException {
+    public void setupSuite() throws IllegalAccessException {
     }
 
     @BeforeMethod
@@ -77,7 +77,7 @@ public class SuiteBase<ServiceInterface, ClientInterface> {
     }
 
     private ThriftServer createServer(ServiceInterface handler)
-            throws IllegalAccessException, InstantiationException {
+            throws IllegalAccessException {
         ThriftServiceProcessor processor = new ThriftServiceProcessor(codecManager, handler);
         return new ThriftServer(processor);
     }

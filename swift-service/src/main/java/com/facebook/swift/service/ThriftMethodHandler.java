@@ -18,6 +18,7 @@ package com.facebook.swift.service;
 import com.facebook.nifty.client.NiftyClientChannel;
 import com.facebook.nifty.client.TChannelBufferInputTransport;
 import com.facebook.nifty.client.TChannelBufferOutputTransport;
+import com.facebook.nifty.core.ThriftMessage;
 import com.facebook.swift.codec.ThriftCodec;
 import com.facebook.swift.codec.ThriftCodecManager;
 import com.facebook.swift.codec.internal.TProtocolReader;
@@ -37,7 +38,6 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.jboss.netty.buffer.ChannelBuffer;
 import org.weakref.jmx.Flatten;
 import org.weakref.jmx.Managed;
 
@@ -148,25 +148,24 @@ public class ThriftMethodHandler
         try {
             Object results = null;
             TChannelBufferOutputTransport outputTransport = new TChannelBufferOutputTransport();
-            ChannelBuffer requestBuffer = outputTransport.getOutputBuffer();
             TProtocol outputProtocol = out.getProtocol(outputTransport);
 
             // write request
             writeArguments(outputProtocol, sequenceId, args);
 
             if (!this.oneway) {
-                ChannelBuffer responseBuffer;
+                ThriftMessage response;
 
-                responseBuffer = SyncClientHelpers.sendSynchronousTwoWayMessage(channel, requestBuffer);
+                response = SyncClientHelpers.sendSynchronousTwoWayMessage(channel, outputTransport.getOutputBuffer());
 
-                TTransport inputTransport = new TChannelBufferInputTransport(responseBuffer);
+                TTransport inputTransport = new TChannelBufferInputTransport(response.getBuffer());
                 TProtocol inputProtocol = in.getProtocol(inputTransport);
                 waitForResponse(inputProtocol, sequenceId);
 
                 // read results
                 results = readResponse(inputProtocol);
             } else {
-                SyncClientHelpers.sendSynchronousOneWayMessage(channel, requestBuffer);
+                SyncClientHelpers.sendSynchronousOneWayMessage(channel, outputTransport.getOutputBuffer());
             }
 
             stats.addSuccessTime(nanosSince(start));
@@ -194,15 +193,17 @@ public class ThriftMethodHandler
             TProtocol outProtocol = out.getProtocol(outTransport);
             writeArguments(outProtocol, sequenceId, args);
 
+            ThriftMessage request = new ThriftMessage(outTransport.getOutputBuffer(), channel.getTransportType());
+
             // send message and setup listener to handle the response
-            channel.sendAsynchronousRequest(outTransport.getOutputBuffer(), false, new NiftyClientChannel.Listener() {
+            channel.sendAsynchronousRequest(request, false, new NiftyClientChannel.Listener() {
                 @Override
                 public void onRequestSent() {}
 
                 @Override
-                public void onResponseReceived(ChannelBuffer message) {
+                public void onResponseReceived(ThriftMessage message) {
                     try {
-                        TTransport inputTransport = new TChannelBufferInputTransport(message);
+                        TTransport inputTransport = new TChannelBufferInputTransport(message.getBuffer());
                         TProtocol inputProtocol = in.getProtocol(inputTransport);
                         waitForResponse(inputProtocol, sequenceId);
                         Object results = readResponse(inputProtocol);

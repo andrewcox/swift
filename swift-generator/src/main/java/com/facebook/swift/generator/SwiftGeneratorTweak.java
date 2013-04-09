@@ -24,4 +24,3 @@ public enum SwiftGeneratorTweak
     EXTEND_RUNTIME_EXCEPTION, // Make generated exceptions extend RuntimeException instead of Exception
     ADD_CLOSEABLE_INTERFACE    // Make generated Services extend Closeable and add a close() method
 }
-

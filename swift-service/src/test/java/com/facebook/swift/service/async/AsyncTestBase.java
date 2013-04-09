@@ -70,7 +70,7 @@ public class AsyncTestBase
     }
 
     protected ThriftServer createAsyncServer()
-            throws InstantiationException, IllegalAccessException, TException
+            throws IllegalAccessException, TException, InterruptedException
     {
         DelayedMapAsyncHandler handler = new DelayedMapAsyncHandler();
         handler.putValueSlowly(0, TimeUnit.MILLISECONDS, "testKey", "default");
@@ -78,7 +78,7 @@ public class AsyncTestBase
     }
 
     protected ThriftServer createServerFromHandler(Object handler)
-            throws IllegalAccessException, InstantiationException
+            throws IllegalAccessException, InterruptedException
     {
         ThriftServiceProcessor processor = new ThriftServiceProcessor(codecManager, handler);
         ThriftServerConfig config = new ThriftServerConfig();

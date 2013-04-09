@@ -16,18 +16,18 @@
 package com.facebook.swift.service;
 
 import com.facebook.nifty.core.NettyConfigBuilder;
-import com.facebook.nifty.core.NettyServerTransport;
+import com.facebook.nifty.core.NiftyBootstrap;
 import com.facebook.nifty.core.ThriftServerDef;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
+import io.netty.util.Timer;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.TProcessorFactory;
-import org.jboss.netty.channel.ServerChannelFactory;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.HashedWheelTimer;
+
 import org.weakref.jmx.Managed;
 
 import java.io.Closeable;
@@ -39,9 +39,7 @@ import java.util.concurrent.ExecutorService;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-import static com.facebook.nifty.core.ShutdownUtil.shutdownChannelFactory;
 import static com.facebook.nifty.core.ShutdownUtil.shutdownExecutor;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 
 public class ThriftServer implements Closeable
@@ -52,16 +50,12 @@ public class ThriftServer implements Closeable
         CLOSED,
     }
 
-    private final NettyServerTransport transport;
+    private final NiftyBootstrap bootstrap;
     private final int workerThreads;
     private final int port;
     private final DefaultChannelGroup allChannels = new DefaultChannelGroup();
 
-    private final ExecutorService acceptorExecutor;
-    private final ExecutorService ioExecutor;
     private final ExecutorService workerExecutor;
-
-    private final ServerChannelFactory serverChannelFactory;
 
     private State state = State.NOT_STARTED;
 
@@ -86,11 +80,6 @@ public class ThriftServer implements Closeable
 
         workerExecutor = newFixedThreadPool(workerThreads, new ThreadFactoryBuilder().setNameFormat("thrift-worker-%s").build());
 
-        acceptorExecutor = newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("thrift-acceptor-%s").build());
-        ioExecutor = newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("thrift-io-%s").build());
-
-        serverChannelFactory = new NioServerSocketChannelFactory(acceptorExecutor, ioExecutor);
-
         ThriftServerDef thriftServerDef = ThriftServerDef.newBuilder()
                                                          .name("thrift")
                                                          .listen(port)
@@ -99,7 +88,7 @@ public class ThriftServer implements Closeable
                                                          .withProcessorFactory(processorFactory)
                                                          .using(workerExecutor).build();
 
-        transport = new NettyServerTransport(thriftServerDef, new NettyConfigBuilder(), allChannels, timer);
+        bootstrap = new NiftyBootstrap(ImmutableSet.of(thriftServerDef), new NettyConfigBuilder(), allChannels);
     }
 
     private int getSpecifiedOrRandomPort(ThriftServerConfig config)
@@ -134,10 +123,11 @@ public class ThriftServer implements Closeable
 
     @PostConstruct
     public synchronized ThriftServer start()
+            throws InterruptedException
     {
         Preconditions.checkState(state != State.CLOSED, "Thrift server is closed");
         if (state == State.NOT_STARTED) {
-            transport.start(serverChannelFactory);
+            bootstrap.start();
             state = State.RUNNING;
         }
         return this;
@@ -153,10 +143,9 @@ public class ThriftServer implements Closeable
 
         if (state == State.RUNNING) {
             try {
-                transport.stop();
+                bootstrap.stop();
 
                 shutdownExecutor(workerExecutor, "workerExecutor");
-                shutdownChannelFactory(serverChannelFactory, acceptorExecutor, ioExecutor, allChannels);
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

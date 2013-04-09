@@ -30,8 +30,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
 
 public class AsyncHttpClientTest extends AsyncTestBase
 {
@@ -63,6 +65,8 @@ public class AsyncHttpClientTest extends AsyncTestBase
     public void testHttpAsyncClient()
             throws Exception
     {
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+
         try (final HttpScribeServer server = new HttpScribeServer())
         {
             server.start();
@@ -97,6 +101,7 @@ public class AsyncHttpClientTest extends AsyncTestBase
                             @Override
                             public void onFailure(Throwable t)
                             {
+                                failure.set(t);
                                 latch.countDown();
                             }
                         });
@@ -118,12 +123,13 @@ public class AsyncHttpClientTest extends AsyncTestBase
             // Now that the latch is clear, client should have connected and the async call completed
             // so check that it did so successfully.
             assertEquals(server.getLogEntries().size(), 1);
+            assertNull(failure.get(), "Async HTTP call failed");
         }
     }
 
     @BeforeMethod(alwaysRun = true)
     public void setup()
-            throws IllegalAccessException, InstantiationException, TException
+            throws IllegalAccessException, TException
     {
         codecManager = new ThriftCodecManager();
         clientManager = new ThriftClientManager(codecManager);

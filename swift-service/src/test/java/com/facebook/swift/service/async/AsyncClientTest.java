@@ -25,7 +25,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
-import org.jboss.netty.handler.timeout.ReadTimeoutException;
+import io.netty.handler.timeout.ReadTimeoutException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -237,7 +237,7 @@ public class AsyncClientTest extends AsyncTestBase
     }
 
     private ThriftServer createSyncServer()
-            throws InstantiationException, IllegalAccessException, TException
+            throws IllegalAccessException, TException, InterruptedException
     {
         DelayedMapSyncHandler handler = new DelayedMapSyncHandler();
         handler.putValueSlowly(0, TimeUnit.MILLISECONDS, "testKey", "default");
@@ -265,7 +265,7 @@ public class AsyncClientTest extends AsyncTestBase
 
     @BeforeMethod(alwaysRun = true)
     public void setup()
-            throws IllegalAccessException, InstantiationException, TException
+            throws IllegalAccessException, TException, InterruptedException
     {
         codecManager = new ThriftCodecManager();
         clientManager = new ThriftClientManager(codecManager);

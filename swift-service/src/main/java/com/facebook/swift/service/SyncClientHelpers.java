@@ -16,9 +16,10 @@
 package com.facebook.swift.service;
 
 import com.facebook.nifty.client.NiftyClientChannel;
+import com.facebook.nifty.core.ThriftMessage;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
-import org.jboss.netty.buffer.ChannelBuffer;
+import io.netty.buffer.ByteBuf;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -33,23 +34,23 @@ class SyncClientHelpers
      * NOTE: the underlying transport may be non-blocking, in which case the blocking is simulated
      * by waits instead of using blocking network operations.
      *
-     * @param request
-     * @return The response, stored in a ChannelBuffer
+     * @param buffer
+     * @return The response, stored in a ByteBuf
      * @throws TException           if an error occurs while serializing or sending the request or
      *                              while receiving or de-serializing the response
      * @throws InterruptedException if the operation is interrupted before the response arrives
      */
-    public static ChannelBuffer sendSynchronousTwoWayMessage(NiftyClientChannel channel,
-                                                             final ChannelBuffer request)
+    public static ThriftMessage sendSynchronousTwoWayMessage(NiftyClientChannel channel, final ByteBuf buffer)
             throws TException, InterruptedException
     {
-        final ChannelBuffer[] responseHolder = new ChannelBuffer[1];
+        final ByteBuf[] responseHolder = new ByteBuf[1];
         final TException[] exceptionHolder = new TTransportException[1];
         final CountDownLatch latch = new CountDownLatch(1);
 
         responseHolder[0] = null;
         exceptionHolder[0] = null;
 
+        ThriftMessage request = new ThriftMessage(buffer, channel.getTransportType());
         channel.sendAsynchronousRequest(request, false, new NiftyClientChannel.Listener()
         {
             @Override
@@ -58,9 +59,9 @@ class SyncClientHelpers
             }
 
             @Override
-            public void onResponseReceived(ChannelBuffer response)
+            public void onResponseReceived(ThriftMessage response)
             {
-                responseHolder[0] = response;
+                responseHolder[0] = response.getBuffer().retain();
                 latch.countDown();
             }
 
@@ -78,7 +79,7 @@ class SyncClientHelpers
             throw exceptionHolder[0];
         }
 
-        return responseHolder[0];
+        return new ThriftMessage(responseHolder[0], channel.getTransportType());
     }
 
     /**
@@ -88,13 +89,12 @@ class SyncClientHelpers
      * NOTE: the underlying transport may be non-blocking, in which case the blocking is simulated
      * by waits instead of using blocking network operations.
      *
-     * @param request
+     * @param buffer
      * @throws TException           if a network or protocol error occurs while serializing or
      *                              sending the request
      * @throws InterruptedException if the thread is interrupted before the request is sent
      */
-    public static void sendSynchronousOneWayMessage(NiftyClientChannel channel,
-                                                    final ChannelBuffer request)
+    public static void sendSynchronousOneWayMessage(NiftyClientChannel channel, final ByteBuf buffer)
             throws TException, InterruptedException
     {
 
@@ -103,6 +103,7 @@ class SyncClientHelpers
 
         exceptionHolder[0] = null;
 
+        ThriftMessage request = new ThriftMessage(buffer, channel.getTransportType());
         channel.sendAsynchronousRequest(request, true, new NiftyClientChannel.Listener()
         {
             @Override
@@ -112,7 +113,7 @@ class SyncClientHelpers
             }
 
             @Override
-            public void onResponseReceived(ChannelBuffer response)
+            public void onResponseReceived(ThriftMessage response)
             {
             }
 

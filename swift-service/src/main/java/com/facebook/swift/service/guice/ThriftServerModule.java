@@ -29,8 +29,8 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import org.apache.thrift.TProcessor;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
 import org.weakref.jmx.guice.ExportBinder;
 import org.weakref.jmx.guice.ObjectNameFunction;
 

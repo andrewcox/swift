@@ -47,7 +47,7 @@ public class AsyncService extends AsyncTestBase
 
     @BeforeMethod(alwaysRun = true)
     private void setup()
-            throws IllegalAccessException, InstantiationException, TException
+            throws IllegalAccessException, TException, InterruptedException
     {
         codecManager = new ThriftCodecManager();
         clientManager = new ThriftClientManager(codecManager);
