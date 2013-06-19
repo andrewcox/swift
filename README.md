@@ -34,7 +34,7 @@ constructor, and builder injection.  For example:
         {
             return message;
         }
-    }    
+    }
 
 
 # Swift Service
