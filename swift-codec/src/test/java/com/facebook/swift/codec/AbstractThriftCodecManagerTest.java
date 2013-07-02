@@ -17,9 +17,13 @@ package com.facebook.swift.codec;
 
 import com.facebook.swift.codec.internal.builtin.BooleanThriftCodec;
 import com.facebook.swift.codec.internal.builtin.SetThriftCodec;
+import com.facebook.swift.codec.internal.coercion.CoercionThriftCodec;
 import com.facebook.swift.codec.internal.coercion.DefaultJavaCoercions;
+import com.facebook.swift.codec.internal.compiler.CompilerThriftCodecFactory;
+import com.facebook.swift.codec.internal.reflection.ReflectionThriftCodec;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
 import com.facebook.swift.codec.metadata.ThriftStructMetadata;
+import com.facebook.swift.codec.metadata.ThriftStructMetadataBuilder;
 import com.facebook.swift.codec.metadata.ThriftType;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableList;

@@ -154,6 +154,12 @@ public class MethodDefinition
         return this;
     }
 
+    public MethodDefinition ifEqualGoto(String name)
+    {
+        instructionList.add(new JumpInsnNode(IF_ICMPEQ, getLabel(name)));
+        return this;
+    }
+
     public MethodDefinition ifZeroGoto(String name)
     {
         instructionList.add(new JumpInsnNode(IFEQ, getLabel(name)));
@@ -340,6 +346,23 @@ public class MethodDefinition
                         Type.getInternalName(method.getDeclaringClass()),
                         method.getName(),
                         Type.getMethodDescriptor(method)
+                )
+        );
+        return this;
+    }
+
+    public MethodDefinition invokeStatic(
+            Class<?> type,
+            String name,
+            Class<?> returnType,
+            Class<?>... parameterTypes)
+    {
+        instructionList.add(
+                new MethodInsnNode(
+                        INVOKESTATIC,
+                        type(type).getClassName(),
+                        name,
+                        methodDescription(returnType, parameterTypes)
                 )
         );
         return this;

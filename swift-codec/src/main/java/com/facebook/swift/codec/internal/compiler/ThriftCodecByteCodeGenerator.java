@@ -18,8 +18,12 @@ package com.facebook.swift.codec.internal.compiler;
 import com.facebook.swift.codec.ThriftCodec;
 import com.facebook.swift.codec.ThriftCodecManager;
 import com.facebook.swift.codec.ThriftProtocolType;
-import com.facebook.swift.codec.internal.TProtocolReader;
+import com.facebook.swift.codec.internal.EnumThriftCodec;
 import com.facebook.swift.codec.internal.TProtocolWriter;
+import com.facebook.swift.codec.internal.builtin.ListThriftCodec;
+import com.facebook.swift.codec.internal.builtin.MapThriftCodec;
+import com.facebook.swift.codec.internal.builtin.SetThriftCodec;
+import com.facebook.swift.codec.internal.builtin.StructThriftCodec;
 import com.facebook.swift.codec.internal.compiler.byteCode.CaseStatement;
 import com.facebook.swift.codec.internal.compiler.byteCode.ClassDefinition;
 import com.facebook.swift.codec.internal.compiler.byteCode.FieldDefinition;
@@ -44,7 +48,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TProtocolUtil;
+import org.apache.thrift.protocol.TStruct;
+import org.apache.thrift.protocol.TType;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.util.CheckClassAdapter;
@@ -73,13 +81,7 @@ import static com.facebook.swift.codec.ThriftProtocolType.MAP;
 import static com.facebook.swift.codec.ThriftProtocolType.SET;
 import static com.facebook.swift.codec.ThriftProtocolType.STRING;
 import static com.facebook.swift.codec.ThriftProtocolType.STRUCT;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.BRIDGE;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.FINAL;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.PRIVATE;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.PUBLIC;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.SUPER;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.SYNTHETIC;
-import static com.facebook.swift.codec.internal.compiler.byteCode.Access.a;
+import static com.facebook.swift.codec.internal.compiler.byteCode.Access.*;
 import static com.facebook.swift.codec.internal.compiler.byteCode.CaseStatement.caseStatement;
 import static com.facebook.swift.codec.internal.compiler.byteCode.NamedParameterDefinition.arg;
 import static com.facebook.swift.codec.internal.compiler.byteCode.ParameterizedType.type;
@@ -123,7 +125,7 @@ public class ThriftCodecByteCodeGenerator<T>
         classDefinition = new ClassDefinition(
                 a(PUBLIC, SUPER),
                 codecType.getClassName(),
-                type(Object.class),
+                type(StructThriftCodec.class, structType),
                 type(ThriftCodec.class, structType)
         );
 
@@ -223,7 +225,7 @@ public class ThriftCodecByteCodeGenerator<T>
         );
 
         // invoke super (Object) constructor
-        constructor.loadThis().invokeConstructor(type(Object.class));
+        constructor.loadThis().invokeConstructor(type(StructThriftCodec.class));
 
         // this.foo = foo;
         for (FieldDefinition fieldDefinition : parameters.getFields()) {
@@ -263,13 +265,8 @@ public class ThriftCodecByteCodeGenerator<T>
                 arg("protocol", TProtocol.class)
         ).addException(Exception.class);
 
-        // TProtocolReader reader = new TProtocolReader(protocol);
-        read.addLocalVariable(type(TProtocolReader.class), "reader");
-        read.newObject(TProtocolReader.class);
-        read.dup();
-        read.loadVariable("protocol");
-        read.invokeConstructor(type(TProtocolReader.class), type(TProtocol.class));
-        read.storeVariable("reader");
+        // TField currentField;
+        read.addLocalVariable(type(TField.class), "currentField");
 
         // read all of the data in to local variables
         Map<Short, LocalVariableDefinition> structData = readFieldValues(read);
@@ -283,8 +280,6 @@ public class ThriftCodecByteCodeGenerator<T>
      */
     private Map<Short, LocalVariableDefinition> readFieldValues(MethodDefinition read)
     {
-        LocalVariableDefinition protocol = read.getLocalVariable("reader");
-
         // declare and init local variables here
         Map<Short, LocalVariableDefinition> structData = new TreeMap<>();
         for (ThriftFieldMetadata field : metadata.getFields()) {
@@ -295,20 +290,31 @@ public class ThriftCodecByteCodeGenerator<T>
             structData.put(field.getId(), variable);
         }
 
-        // protocol.readStructBegin();
+        LocalVariableDefinition protocol = read.getLocalVariable("protocol");
+        LocalVariableDefinition currentField = read.getLocalVariable("currentField");
+
+        // protocol.readStructBegin()
         read.loadVariable(protocol).invokeVirtual(
-                TProtocolReader.class,
+                TProtocol.class,
                 "readStructBegin",
-                void.class
+                TStruct.class
         );
+        read.pop();
 
-        // while (protocol.nextField())
+        // begin while loop
         read.visitLabel("while-begin");
-        read.loadVariable(protocol).invokeVirtual(TProtocolReader.class, "nextField", boolean.class);
-        read.ifZeroGoto("while-end");
+        // currentField = protocol.readFieldBegin()
+        read.loadVariable(protocol).invokeVirtual(TProtocol.class, "readFieldBegin", TField.class);
+        read.storeVariable(currentField);
+        // if (currentField.type == TType.STOP) {
+        //   break;
+        // }
+        read.loadVariable(currentField).getField(TField.class, "type", byte.class);
+        read.loadConstant(TType.STOP);
+        read.ifEqualGoto("while-end");
 
-        // switch (protocol.getFieldId())
-        read.loadVariable(protocol).invokeVirtual(TProtocolReader.class, "getFieldId", short.class);
+        // switch (currentField.id)
+        read.loadVariable(currentField).getField(TField.class, "id", short.class);
         List<CaseStatement> cases = new ArrayList<>();
         for (ThriftFieldMetadata field : metadata.getFields()) {
             cases.add(caseStatement(field.getId(), field.getName() + "-field"));
@@ -319,14 +325,14 @@ public class ThriftCodecByteCodeGenerator<T>
             // case field.id:
             read.visitLabel(field.getName() + "-field");
 
-            // push protocol
-            read.loadVariable(protocol);
-
             // push ThriftTypeCodec for this field
             FieldDefinition codecField = codecFields.get(field.getId());
             if (codecField != null) {
                 read.loadThis().getField(codecType, codecField);
             }
+
+            // push protocol (don't need a codec for simple types)
+            read.loadVariable(protocol);
 
             // read value
             Method readMethod = READ_METHODS.get(field.getType().getProtocolType());
@@ -354,17 +360,16 @@ public class ThriftCodecByteCodeGenerator<T>
         }
 
         // default case
-        read.visitLabel("default")
-                .loadVariable(protocol)
-                .invokeVirtual(TProtocolReader.class, "skipFieldData", void.class)
-                .gotoLabel("while-begin");
+        read.visitLabel("default");
+        read.loadVariable(protocol);
+        read.loadVariable(currentField).getField(TField.class, "type", byte.class);
+        read.invokeStatic(TProtocolUtil.class, "skip", void.class, TProtocol.class, byte.class);
+        read.gotoLabel("while-begin");
 
         // end of while loop
         read.visitLabel("while-end");
 
-        // protocol.readStructEnd();
-        read.loadVariable(protocol)
-                .invokeVirtual(TProtocolReader.class, "readStructEnd", void.class);
+        read.loadVariable(protocol).invokeVirtual(TProtocol.class, "readStructEnd", void.class);
         return structData;
     }
 
@@ -526,14 +531,13 @@ public class ThriftCodecByteCodeGenerator<T>
         );
         classDefinition.addMethod(write);
 
-        // TProtocolReader reader = new TProtocolReader(protocol);
+        // TProtocolReader writer = new TProtocolWriter(protocol);
         write.addLocalVariable(type(TProtocolWriter.class), "writer");
         write.newObject(TProtocolWriter.class);
         write.dup();
         write.loadVariable("protocol");
         write.invokeConstructor(type(TProtocolWriter.class), type(TProtocol.class));
         write.storeVariable("writer");
-
 
         LocalVariableDefinition protocol = write.getLocalVariable("writer");
 
@@ -816,18 +820,18 @@ public class ThriftCodecByteCodeGenerator<T>
             writeBuilder.put(LIST, TProtocolWriter.class.getMethod("writeListField", String.class, short.class, ThriftCodec.class, List.class));
             writeBuilder.put(ENUM, TProtocolWriter.class.getMethod("writeEnumField", String.class, short.class, ThriftCodec.class, Enum.class));
 
-            readBuilder.put(BOOL, TProtocolReader.class.getMethod("readBoolField"));
-            readBuilder.put(BYTE, TProtocolReader.class.getMethod("readByteField"));
-            readBuilder.put(DOUBLE, TProtocolReader.class.getMethod("readDoubleField"));
-            readBuilder.put(I16, TProtocolReader.class.getMethod("readI16Field"));
-            readBuilder.put(I32, TProtocolReader.class.getMethod("readI32Field"));
-            readBuilder.put(I64, TProtocolReader.class.getMethod("readI64Field"));
-            readBuilder.put(STRING, TProtocolReader.class.getMethod("readBinaryField"));
-            readBuilder.put(STRUCT, TProtocolReader.class.getMethod("readStructField", ThriftCodec.class));
-            readBuilder.put(MAP, TProtocolReader.class.getMethod("readMapField", ThriftCodec.class));
-            readBuilder.put(SET, TProtocolReader.class.getMethod("readSetField", ThriftCodec.class));
-            readBuilder.put(LIST, TProtocolReader.class.getMethod("readListField", ThriftCodec.class));
-            readBuilder.put(ENUM, TProtocolReader.class.getMethod("readEnumField", ThriftCodec.class));
+            readBuilder.put(BOOL, TProtocol.class.getMethod("readBool"));
+            readBuilder.put(BYTE, TProtocol.class.getMethod("readByte"));
+            readBuilder.put(DOUBLE, TProtocol.class.getMethod("readDouble"));
+            readBuilder.put(I16, TProtocol.class.getMethod("readI16"));
+            readBuilder.put(I32, TProtocol.class.getMethod("readI32"));
+            readBuilder.put(I64, TProtocol.class.getMethod("readI64"));
+            readBuilder.put(STRING, TProtocol.class.getMethod("readBinary"));
+            readBuilder.put(STRUCT, StructThriftCodec.class.getMethod("read", TProtocol.class));
+            readBuilder.put(MAP, MapThriftCodec.class.getMethod("read", TProtocol.class));
+            readBuilder.put(SET, SetThriftCodec.class.getMethod("read", TProtocol.class));
+            readBuilder.put(LIST, ListThriftCodec.class.getMethod("read", TProtocol.class));
+            readBuilder.put(ENUM, EnumThriftCodec.class.getMethod("read", TProtocol.class));
         }
         catch (NoSuchMethodException e) {
             throw Throwables.propagate(e);

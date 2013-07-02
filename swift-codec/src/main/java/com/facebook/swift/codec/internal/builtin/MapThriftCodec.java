@@ -20,9 +20,12 @@ import com.facebook.swift.codec.internal.TProtocolReader;
 import com.facebook.swift.codec.internal.TProtocolWriter;
 import com.facebook.swift.codec.metadata.ThriftType;
 import com.google.common.base.Preconditions;
+import org.apache.thrift.protocol.TMap;
 import org.apache.thrift.protocol.TProtocol;
 
 import javax.annotation.concurrent.Immutable;
+
+import java.util.HashMap;
 import java.util.Map;
 
 @Immutable
@@ -53,8 +56,17 @@ public class MapThriftCodec<K, V> implements ThriftCodec<Map<K, V>>
     public Map<K, V> read(TProtocol protocol)
             throws Exception
     {
-        Preconditions.checkNotNull(protocol, "protocol is null");
-        return new TProtocolReader(protocol).readMap(keyCodec, valueCodec);
+        //Preconditions.checkNotNull(protocol, "protocol is null");
+        //return new TProtocolReader(protocol).readMap(keyCodec, valueCodec);
+        TMap tMap = protocol.readMapBegin();
+        Map<K, V> map = new HashMap<>();
+        for (int i = 0; i < tMap.size; i++) {
+            K key = keyCodec.read(protocol);
+            V value = valueCodec.read(protocol);
+            map.put(key, value);
+        }
+        protocol.readMapEnd();
+        return map;
     }
 
     @Override

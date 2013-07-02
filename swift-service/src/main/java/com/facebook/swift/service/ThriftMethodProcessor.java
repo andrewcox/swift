@@ -29,11 +29,16 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeToken;
 import org.apache.thrift.TApplicationException;
+import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TMessage;
 import org.apache.thrift.protocol.TMessageType;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolException;
 import org.weakref.jmx.Flatten;
+import org.apache.thrift.protocol.TProtocolUtil;
+import org.apache.thrift.protocol.TType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.weakref.jmx.Managed;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -45,6 +50,7 @@ import java.util.concurrent.Future;
 
 import static io.airlift.units.Duration.nanosSince;
 import static org.apache.thrift.TApplicationException.INTERNAL_ERROR;
+import static org.apache.thrift.TApplicationException.read;
 
 @ThreadSafe
 public class ThriftMethodProcessor
@@ -220,26 +226,48 @@ public class ThriftMethodProcessor
         try {
             int numArgs = method.getParameterTypes().length;
             Object[] args = new Object[numArgs];
-            TProtocolReader reader = new TProtocolReader(in);
 
+            // TProtocolReader reader = new TProtocolReader(in);
+            //
             // Map incoming arguments from the ID passed in on the wire to the position in the
             // java argument list we expect to see a parameter with that ID.
-            reader.readStructBegin();
-            while (reader.nextField()) {
-                short fieldId = reader.getFieldId();
+            //reader.readStructBegin();
+            //while (reader.nextField()) {
+            //    short fieldId = reader.getFieldId();
+            //
+            //    ThriftCodec<?> codec = parameterCodecs.get(fieldId);
+            //    if (codec == null) {
+            //        // unknown field
+            //        reader.skipFieldData();
+            //    }
+            //    else {
+            //        // Map the incoming arguments to an array of arguments ordered as the java
+            //        // code for the handler method expects to see them
+            //        args[thriftParameterIdToJavaArgumentListPositionMap.get(fieldId)] = reader.readField(codec);
+            //    }
+            //}
+            //reader.readStructEnd();
 
+            in.readStructBegin();
+            while (true) {
+                TField currentField = in.readFieldBegin();
+                if (currentField.type == TType.STOP) {
+                    break;
+                }
+                short fieldId = currentField.id;
                 ThriftCodec<?> codec = parameterCodecs.get(fieldId);
                 if (codec == null) {
                     // unknown field
-                    reader.skipFieldData();
+                    TProtocolUtil.skip(in, currentField.type);
                 }
                 else {
                     // Map the incoming arguments to an array of arguments ordered as the java
                     // code for the handler method expects to see them
-                    args[thriftParameterIdToJavaArgumentListPositionMap.get(fieldId)] = reader.readField(codec);
+                    args[thriftParameterIdToJavaArgumentListPositionMap.get(fieldId)] = codec.read(in);
                 }
+                in.readFieldEnd();
             }
-            reader.readStructEnd();
+            in.readStructEnd();
 
             // Walk through our list of expected parameters and if no incoming parameters were
             // mapped to a particular expected parameter, fill the expected parameter slow with
