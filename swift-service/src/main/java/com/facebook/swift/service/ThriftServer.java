@@ -100,7 +100,10 @@ public class ThriftServer implements Closeable
                                                          .withProcessorFactory(processorFactory)
                                                          .using(workerExecutor).build();
 
-        transport = new NettyServerTransport(thriftServerDef, new NettyConfigBuilder(), allChannels, timer);
+        NettyConfigBuilder nettyConfigBuilder = new NettyConfigBuilder();
+        nettyConfigBuilder.getSocketChannelConfig().setTcpNoDelay(true);
+
+        transport = new NettyServerTransport(thriftServerDef, nettyConfigBuilder, allChannels, timer);
     }
 
     @Managed
