@@ -15,6 +15,8 @@
  */
 package com.facebook.swift.service.guice;
 
+import com.facebook.nifty.client.NettyClientConfigBuilder;
+import com.facebook.nifty.client.NiftyClient;
 import com.facebook.swift.service.ThriftClientManager;
 import com.facebook.swift.service.ThriftClientManager.ThriftClientMetadata;
 import com.facebook.swift.service.ThriftMethodHandler;
@@ -57,6 +59,15 @@ public class ThriftClientModule implements Module
                         return key;
                     }
                 });
+    }
+
+    @Provides
+    @Singleton
+    public NiftyClient getNiftyClient()
+    {
+        NettyClientConfigBuilder config = new NettyClientConfigBuilder();
+        config.getSocketChannelConfig().setTcpNoDelay(true);
+        return new NiftyClient(config);
     }
 
     @Provides

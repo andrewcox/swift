@@ -15,6 +15,7 @@
  */
 package com.facebook.swift.service;
 
+import com.facebook.nifty.client.NettyClientConfigBuilder;
 import com.facebook.nifty.client.NiftyClient;
 import com.facebook.nifty.client.NiftyClientChannel;
 import com.facebook.nifty.client.NiftyClientConnector;
@@ -51,6 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
 import javax.annotation.PreDestroy;
 import javax.annotation.concurrent.Immutable;
+import javax.inject.Inject;
 
 import static com.facebook.swift.service.ThriftClientConfig.DEFAULT_CONNECT_TIMEOUT;
 import static com.facebook.swift.service.ThriftClientConfig.DEFAULT_READ_TIMEOUT;
@@ -76,6 +78,13 @@ public class ThriftClientManager implements Closeable
                 }
             });
 
+    public static NiftyClient buildNiftyClient()
+    {
+        NettyClientConfigBuilder clientConfigBuilder = new NettyClientConfigBuilder();
+        clientConfigBuilder.getSocketChannelConfig().setTcpNoDelay(true);
+        return new NiftyClient(clientConfigBuilder);
+    }
+
     public ThriftClientManager()
     {
         this(new ThriftCodecManager());
@@ -83,8 +92,14 @@ public class ThriftClientManager implements Closeable
 
     public ThriftClientManager(ThriftCodecManager codecManager)
     {
+        this(codecManager, buildNiftyClient());
+    }
+
+    @Inject
+    public ThriftClientManager(ThriftCodecManager codecManager, NiftyClient niftyClient)
+    {
         this.codecManager = codecManager;
-        this.niftyClient = new NiftyClient();
+        this.niftyClient = niftyClient;
     }
 
     public <T, C extends NiftyClientChannel> ListenableFuture<T> createClient(
