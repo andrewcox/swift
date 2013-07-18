@@ -156,7 +156,7 @@ public class ThriftMethodHandler
             // write request
             outputTransport.reset();
             writeArguments(outputProtocol, sequenceId, args);
-            ChannelBuffer requestBuffer = outputTransport.getOutputBuffer().copy();
+            ChannelBuffer requestBuffer = outputTransport.getOutputBuffer();
 
             if (!this.oneway) {
                 ChannelBuffer responseBuffer;
