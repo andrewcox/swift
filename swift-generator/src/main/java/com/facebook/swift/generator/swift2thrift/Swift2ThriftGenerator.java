@@ -128,12 +128,11 @@ public class Swift2ThriftGenerator
 
             if (packageName == null) {
                 packageName = cls.getPackage().getName();
-            } else if (!packageName.equals(cls.getPackage().getName())) {
-                if (allowMultiplePackages == null) {
-                    throw new IllegalStateException(
-                        String.format("Class %s is in package %s, previous classes were in package %s",
-                            cls.getName(), cls.getPackage().getName(), packageName));
-                }
+            } else if (!packageName.equals(cls.getPackage().getName()) &&
+                       allowMultiplePackages == null) {
+                throw new IllegalStateException(
+                    String.format("Class %s is in package %s, previous classes were in package %s",
+                        cls.getName(), cls.getPackage().getName(), packageName));
             }
 
             Object result = convertToThrift(cls);
