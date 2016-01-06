@@ -10,15 +10,17 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
+ * License for the specific language governing perm7ions and limitations
  * under the License.
  */
 package com.facebook.swift.codec.metadata;
 
 import com.facebook.swift.codec.ThriftProtocolType;
+import com.facebook.swift.service.ThriftMethod;
 import com.google.common.base.Preconditions;
 import com.google.common.reflect.TypeParameter;
 import com.google.common.reflect.TypeToken;
+import com.google.common.util.concurrent.Futures;
 
 import javax.annotation.concurrent.Immutable;
 
@@ -27,6 +29,10 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.facebook.swift.codec.ThriftProtocolType.ENUM;
 import static com.facebook.swift.codec.ThriftProtocolType.STRUCT;
@@ -52,6 +58,42 @@ public class ThriftType
     public static ThriftType struct(ThriftStructMetadata structMetadata)
     {
         return new ThriftType(structMetadata);
+    }
+
+    public static ThriftType recursivestruct(Type structType, ThriftCatalog catalog)
+    {
+        return new ThriftType(structType, new Future<ThriftStructMetadata>()
+        {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning)
+            {
+                throw new IllegalStateException("Call to unimplemented config method");
+            }
+
+            @Override
+            public boolean isCancelled()
+            {
+                throw new IllegalStateException("Call to unimplemented config method");
+            }
+
+            @Override
+            public boolean isDone()
+            {
+                throw new IllegalStateException("Call to unimplemented config method");
+            }
+
+            @Override
+            public ThriftStructMetadata get() throws InterruptedException, ExecutionException
+            {
+                return catalog.getThriftStructMetadata(structType);
+            }
+
+            @Override
+            public ThriftStructMetadata get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
+            {
+                throw new IllegalStateException("Call to unimplemented config method");
+            }
+        });
     }
 
     public static <K, V> ThriftType map(ThriftType keyType, ThriftType valueType)
@@ -106,7 +148,7 @@ public class ThriftType
     private final Type javaType;
     private final ThriftType keyType;
     private final ThriftType valueType;
-    private final ThriftStructMetadata structMetadata;
+    private final Future<ThriftStructMetadata> structMetadata;
     private final ThriftEnumMetadata<?> enumMetadata;
     private final ThriftType uncoercedType;
 
@@ -145,6 +187,19 @@ public class ThriftType
 
         this.protocolType = STRUCT;
         this.javaType = structMetadata.getStructClass();
+        keyType = null;
+        valueType = null;
+        this.structMetadata = Futures.immediateFuture(structMetadata);
+        this.enumMetadata = null;
+        this.uncoercedType = null;
+    }
+
+    private ThriftType(Type javaType, Future<ThriftStructMetadata> structMetadata)
+    {
+        Preconditions.checkNotNull(structMetadata, "structMetadata is null");
+
+        this.protocolType = STRUCT;
+        this.javaType = javaType;
         keyType = null;
         valueType = null;
         this.structMetadata = structMetadata;
@@ -202,7 +257,7 @@ public class ThriftType
     public ThriftStructMetadata getStructMetadata()
     {
         checkState(structMetadata != null, "%s does not have struct metadata", protocolType);
-        return structMetadata;
+        return Futures.getUnchecked(structMetadata);
     }
 
     public ThriftEnumMetadata<?> getEnumMetadata()
@@ -275,7 +330,7 @@ public class ThriftType
         sb.append("{");
         sb.append(protocolType).append(" ").append(javaType);
         if (structMetadata != null) {
-            sb.append(" ").append(structMetadata.getStructClass().getName());
+            sb.append(" ").append(getStructMetadata().getStructClass().getName());
         }
         else if (keyType != null) {
             sb.append(" keyType=").append(keyType);

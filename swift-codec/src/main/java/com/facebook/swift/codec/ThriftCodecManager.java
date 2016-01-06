@@ -56,6 +56,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Type;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
@@ -69,6 +71,14 @@ public class ThriftCodecManager
 {
     private final ThriftCatalog catalog;
     private final LoadingCache<ThriftType, ThriftCodec<?>> typeCodecs;
+    private final ThreadLocal<Deque<ThriftType>> stack = new ThreadLocal<Deque<ThriftType>>()
+    {
+        @Override
+        protected Deque<ThriftType> initialValue()
+        {
+            return new ArrayDeque<>();
+        }
+    };
 
     public ThriftCodecManager(ThriftCodec<?>... codecs)
     {
@@ -168,20 +178,28 @@ public class ThriftCodecManager
         return (ThriftCodec<T>) getCodec(thriftType);
     }
 
+    public <T> ThriftCodec<T> getCodec(TypeToken<T> type)
+    {
+        return (ThriftCodec<T>) getCodec(type.getType());
+    }
+
     public ThriftCodec<?> getCodec(ThriftType type)
     {
+        if (stack.get().contains(type)) {
+            return new FutureCodecDelegate(this, type.getJavaType());
+        }
+
         try {
+            stack.get().push(type);
             ThriftCodec<?> thriftCodec = typeCodecs.get(type);
             return thriftCodec;
         }
         catch (ExecutionException e) {
             throw Throwables.propagate(e);
         }
-    }
-
-    public <T> ThriftCodec<T> getCodec(TypeToken<T> type)
-    {
-        return (ThriftCodec<T>) getCodec(type.getType());
+        finally {
+            stack.get().pop();
+        }
     }
 
     /**

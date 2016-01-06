@@ -25,6 +25,7 @@ import com.facebook.swift.codec.metadata.ThriftInjection;
 import com.facebook.swift.codec.metadata.ThriftMethodInjection;
 import com.facebook.swift.codec.metadata.ThriftParameterInjection;
 import com.facebook.swift.codec.metadata.ThriftType;
+import com.facebook.swift.codec.metadata.ThriftTypeFuture;
 import com.facebook.swift.codec.metadata.TypeCoercion;
 import com.facebook.swift.service.ThriftException;
 import com.facebook.swift.service.ThriftMethod;
@@ -137,7 +138,7 @@ public class ThriftMethodMetadata
                     parameterId,
                     isLegacyId,
                     parameterRequiredness,
-                    thriftType,
+                    new ThriftTypeFuture(thriftType),
                     parameterName,
                     THRIFT_FIELD,
                     ImmutableList.of(parameterInjection),

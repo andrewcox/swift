@@ -675,9 +675,9 @@ public abstract class AbstractThriftMetadataBuilder
 
         // fields must have the same type
         if (isSupportedType) {
-            Set<ThriftType> types = new HashSet<>();
+            Set<ThriftTypeFuture> types = new HashSet<>();
             for (FieldMetadata field : fields) {
-                types.add(catalog.getThriftType(field.getJavaType()));
+                types.add(catalog.getThriftTypeFuture(field.getJavaType()));
             }
             if (types.size() > 1) {
                 metadataErrors.addError("Thrift class '%s' field '%s(%s)' has multiple types: %s", structName, name, id, types);

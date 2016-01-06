@@ -252,7 +252,7 @@ public abstract class AbstractThriftCodecManagerTest
                 ImmutableMap.of((short) 1, new short[] {10, 11, 12, 13}, (short) 2, new short[] {15, 16, 17, 18}),
                 ImmutableMap.of((short) 1, new int[] {20, 21, 22, 23}, (short) 2, new int[] {25, 26, 27, 28}),
                 ImmutableMap.of((short) 1, new long[] {30, 31, 32, 33}, (short) 2, new long[] {35, 36, 37, 38}),
-                ImmutableMap.of((short) 1, new double[] {40, 41, 42, 43}, (short) 2, new double[] {45, 46, 47, 48}));
+                ImmutableMap.of((short) 1, new double[]{40, 41, 42, 43}, (short) 2, new double[]{45, 46, 47, 48}));
 
         testRoundTripSerialize(arrayField, new TCompactProtocol.Factory());
         testRoundTripSerialize(arrayField, new TJSONProtocol.Factory());
@@ -355,7 +355,9 @@ public abstract class AbstractThriftCodecManagerTest
         GenericThriftStructBean<String> bean = new GenericThriftStructBean<>();
         bean.setGenericProperty("genericValue");
 
-        testRoundTripSerialize(new TypeToken<GenericThriftStructBean<String>>() {}, bean, new TCompactProtocol.Factory());
+        testRoundTripSerialize(new TypeToken<GenericThriftStructBean<String>>()
+        {
+        }, bean, new TCompactProtocol.Factory());
     }
 
     @Test
@@ -425,6 +427,18 @@ public abstract class AbstractThriftCodecManagerTest
         fieldObject.concreteField = "concreteValue";
 
         testRoundTripSerialize(fieldObject, new TCompactProtocol.Factory());
+    }
+
+    @Test
+    public void testSimpleRecursiveStruct()
+            throws Exception
+    {
+        SimpleRecursiveThriftStruct recursiveObject = new SimpleRecursiveThriftStruct();
+        recursiveObject.data = "parent";
+        recursiveObject.child = new SimpleRecursiveThriftStruct();
+        recursiveObject.child.data = "child";
+
+        testRoundTripSerialize(recursiveObject, new TCompactProtocol.Factory());
     }
 
     private void assertAllFieldsSet(IsSetBean isSetBean, boolean expected)

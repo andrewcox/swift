@@ -119,9 +119,9 @@ public class ThriftCatalog
     }
 
     /**
-     * Add the @ToThrift and @FromThrift coercions in the specified class to this catalog.  All
-     * coercions must be symmetrical, so ever @ToThrift method must have a corresponding @FromThrift
-     * method.
+     * Add the @ToThrift and @FromThrift coercions in the specified class to this catalog.
+     * All coercions must be symmetrical, so every @ToThrift method must have a
+     * corresponding @FromThrift method.
      */
     public void addDefaultCoercions(Class<?> coercionsClass)
     {
@@ -216,6 +216,23 @@ public class ThriftCatalog
             typeCache.putIfAbsent(javaType, thriftType);
         }
         return thriftType;
+    }
+
+    public ThriftTypeFuture getThriftTypeFuture(Type javaType)
+    {
+        ThriftType thriftType = typeCache.get(javaType);
+        if (thriftType == null) {
+            if (stack.get().contains(javaType)) {
+                // recursion: return an unresolved ThriftTypeFuture
+                return new ThriftTypeFuture(javaType, this);
+            }
+            else {
+                thriftType = getThriftTypeUncached(javaType);
+                typeCache.putIfAbsent(javaType, thriftType);
+            }
+        }
+        // return a resolved ThriftTypeFuture
+        return new ThriftTypeFuture(thriftType);
     }
 
     private ThriftType getThriftTypeUncached(Type javaType)
@@ -536,19 +553,21 @@ public class ThriftCatalog
             }));
             throw new IllegalArgumentException("Circular references are not allowed: " + path);
         }
+        else {
+            stack.push(structType);
 
-        stack.push(structType);
-        try {
-            ThriftStructMetadataBuilder builder = new ThriftStructMetadataBuilder(this, structType);
-            ThriftStructMetadata structMetadata = builder.build();
-            return structMetadata;
-        }
-        finally {
-            Type top = stack.pop();
-            checkState(structType.equals(top),
-                    "ThriftCatalog circularity detection stack is corrupt: expected %s, but got %s",
-                    structType,
-                    top);
+            try {
+                ThriftStructMetadataBuilder builder = new ThriftStructMetadataBuilder(this, structType);
+                ThriftStructMetadata structMetadata = builder.build();
+                return structMetadata;
+            }
+            finally {
+                Type top = stack.pop();
+                checkState(structType.equals(top),
+                           "ThriftCatalog circularity detection stack is corrupt: expected %s, but got %s",
+                           structType,
+                           top);
+            }
         }
     }
 
@@ -583,5 +602,4 @@ public class ThriftCatalog
                     top);
         }
     }
-
 }
