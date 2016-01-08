@@ -394,6 +394,10 @@ public class Swift2ThriftGenerator
         ThriftStructMetadata metadata = t.getStructMetadata();
         boolean ok = true;
         for (ThriftFieldMetadata fieldMetadata: metadata.getFields(FieldKind.THRIFT_FIELD)) {
+            if (t == fieldMetadata.getThriftType()) {
+                continue;
+            }
+
             boolean fieldOk = verifyField(fieldMetadata.getThriftType());
             if (!fieldOk) {
                 ok = false;
@@ -418,7 +422,7 @@ public class Swift2ThriftGenerator
         try {
             return getClassLoader().loadClass(className);
         } catch (ClassNotFoundException e) {
-            LOG.warn("Couldn't load class %s", className);
+            LOG.warn("Couldn't load class %s (%s)", className, e);
         }
         return null;
     }

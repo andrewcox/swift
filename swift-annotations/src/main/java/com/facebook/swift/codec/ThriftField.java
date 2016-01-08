@@ -32,6 +32,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({METHOD, FIELD, PARAMETER})
 public @interface ThriftField
 {
+    String RECURSIVE_REFERENCE_ANNOTATION_NAME = "swift.recursive_reference";
+
     short value() default Short.MIN_VALUE;
 
     /** Indicates this ThriftField has a negative ID, which is deprecated. */
@@ -41,11 +43,22 @@ public @interface ThriftField
 
     Requiredness requiredness() default Requiredness.UNSPECIFIED;
 
+    Recursiveness isRecursive() default Recursiveness.UNSPECIFIED;
+
+    ThriftIdlAnnotation[] idlAnnotations() default {};
+
+    enum Recursiveness
+    {
+        UNSPECIFIED,
+        FALSE,
+        TRUE,
+    }
+
     /**
      * Indicates the behavior for a field when a value is not received, or when the value
      * of the field is not set when sending.
      */
-    public static enum Requiredness
+    enum Requiredness
     {
         /**
          * This is the default (unset) value for {@link ThriftField#requiredness()}. It will not

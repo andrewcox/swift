@@ -16,7 +16,9 @@
 package com.facebook.swift.service.metadata;
 
 import com.facebook.swift.codec.ThriftField;
+import com.facebook.swift.codec.ThriftIdlAnnotation;
 import com.facebook.swift.codec.ThriftStruct;
+import com.facebook.swift.codec.metadata.DefaultThriftTypeHolder;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
 import com.facebook.swift.codec.metadata.ThriftConstructorInjection;
 import com.facebook.swift.codec.metadata.ThriftExtraction;
@@ -25,7 +27,6 @@ import com.facebook.swift.codec.metadata.ThriftInjection;
 import com.facebook.swift.codec.metadata.ThriftMethodInjection;
 import com.facebook.swift.codec.metadata.ThriftParameterInjection;
 import com.facebook.swift.codec.metadata.ThriftType;
-import com.facebook.swift.codec.metadata.ThriftTypeFuture;
 import com.facebook.swift.codec.metadata.TypeCoercion;
 import com.facebook.swift.service.ThriftException;
 import com.facebook.swift.service.ThriftMethod;
@@ -106,11 +107,20 @@ public class ThriftMethodMetadata
             short parameterId = Short.MIN_VALUE;
             boolean isLegacyId = false;
             String parameterName = null;
+            Map<String, String> parameterIdlAnnotations = null;
             Requiredness parameterRequiredness = Requiredness.UNSPECIFIED;
             if (thriftField != null) {
                 parameterId = thriftField.value();
                 isLegacyId = thriftField.isLegacyId();
                 parameterRequiredness = thriftField.requiredness();
+                ImmutableMap.Builder<String, String> idlAnnotationsBuilder = ImmutableMap.builder();
+                if (thriftField != null) {
+                    for (ThriftIdlAnnotation idlAnnotation : thriftField.idlAnnotations()) {
+                        idlAnnotationsBuilder.put(idlAnnotation.key(), idlAnnotation.value());
+                    }
+                }
+                parameterIdlAnnotations = idlAnnotationsBuilder.build();
+
                 if (!thriftField.name().isEmpty()) {
                     parameterName = thriftField.name();
                 }
@@ -138,7 +148,8 @@ public class ThriftMethodMetadata
                     parameterId,
                     isLegacyId,
                     parameterRequiredness,
-                    new ThriftTypeFuture(thriftType),
+                    parameterIdlAnnotations,
+                    new DefaultThriftTypeHolder(thriftType),
                     parameterName,
                     THRIFT_FIELD,
                     ImmutableList.of(parameterInjection),

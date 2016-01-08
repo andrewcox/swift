@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static com.facebook.swift.codec.ThriftField.Requiredness;
 import static com.facebook.swift.codec.metadata.FieldKind.THRIFT_FIELD;
@@ -140,9 +141,10 @@ public class ThriftStructMetadataBuilder
     {
         short id = -1;
         boolean isLegacyId = false;
+        Map<String, String> idlAnnotations = null;
         String name = null;
         Requiredness requiredness = Requiredness.UNSPECIFIED;
-        ThriftTypeFuture thriftTypeFuture = null;
+        ThriftTypeHolder thriftTypeHolder = null;
 
         // process field injections and extractions
         ImmutableList.Builder<ThriftInjection> injections = ImmutableList.builder();
@@ -152,7 +154,13 @@ public class ThriftStructMetadataBuilder
             isLegacyId = fieldMetadata.isLegacyId();
             name = fieldMetadata.getName();
             requiredness = fieldMetadata.getRequiredness();
-            thriftTypeFuture = catalog.getThriftTypeFuture(fieldMetadata.getJavaType());
+            idlAnnotations = fieldMetadata.getIdlAnnotations();
+            if ("true".equalsIgnoreCase(fieldMetadata.getIdlAnnotations().getOrDefault("swift.ref", "false"))) {
+                thriftTypeHolder = new RecursiveThriftTypeHolder(catalog, fieldMetadata.getJavaType());
+            }
+            else {
+                thriftTypeHolder = catalog.getThriftTypeHolder(fieldMetadata);
+            }
 
             if (fieldMetadata instanceof FieldInjection) {
                 FieldInjection fieldInjection = (FieldInjection) fieldMetadata;
@@ -179,15 +187,16 @@ public class ThriftStructMetadataBuilder
 
         // add type coercion
         TypeCoercion coercion = null;
-        if (thriftTypeFuture.isResolved() && thriftTypeFuture.get().isCoerced()) {
-            coercion = catalog.getDefaultCoercion(thriftTypeFuture.get().getJavaType());
+        if (!thriftTypeHolder.isRecursive() && thriftTypeHolder.resolve().isCoerced()) {
+            coercion = catalog.getDefaultCoercion(thriftTypeHolder.resolve().getJavaType());
         }
 
         ThriftFieldMetadata thriftFieldMetadata = new ThriftFieldMetadata(
                 id,
                 isLegacyId,
                 requiredness,
-                thriftTypeFuture,
+                idlAnnotations,
+                thriftTypeHolder,
                 name,
                 THRIFT_FIELD,
                 injections.build(),

@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static com.facebook.swift.codec.ThriftField.Requiredness;
 import static com.facebook.swift.codec.metadata.FieldKind.THRIFT_UNION_ID;
@@ -200,8 +201,9 @@ public class ThriftUnionMetadataBuilder
         boolean isLegacyId = false;
         String name = null;
         Requiredness requiredness = Requiredness.UNSPECIFIED;
+        Map<String, String> idlAnnotations = null;
         FieldKind fieldType = FieldKind.THRIFT_FIELD;
-        ThriftTypeFuture thriftTypeFuture = null;
+        ThriftTypeHolder thriftTypeHolder = null;
         ThriftConstructorInjection thriftConstructorInjection = null;
         ThriftMethodInjection thriftMethodInjection = null;
 
@@ -213,8 +215,9 @@ public class ThriftUnionMetadataBuilder
             isLegacyId = fieldMetadata.isLegacyId();
             name = fieldMetadata.getName();
             requiredness = fieldMetadata.getRequiredness();
+            idlAnnotations = fieldMetadata.getIdlAnnotations();
             fieldType = fieldMetadata.getType();
-            thriftTypeFuture = catalog.getThriftTypeFuture(fieldMetadata.getJavaType());
+            thriftTypeHolder = catalog.getThriftTypeHolder(fieldMetadata);
 
             switch (requiredness) {
                 case REQUIRED:
@@ -269,15 +272,16 @@ public class ThriftUnionMetadataBuilder
 
         // add type coercion
         TypeCoercion coercion = null;
-        if (thriftTypeFuture.isResolved() && thriftTypeFuture.get().isCoerced()) {
-            coercion = catalog.getDefaultCoercion(thriftTypeFuture.get().getJavaType());
+        if (!thriftTypeHolder.isRecursive() && thriftTypeHolder.resolve().isCoerced()) {
+            coercion = catalog.getDefaultCoercion(thriftTypeHolder.resolve().getJavaType());
         }
 
         ThriftFieldMetadata thriftFieldMetadata = new ThriftFieldMetadata(
                 id,
                 isLegacyId,
                 requiredness,
-                thriftTypeFuture,
+                idlAnnotations,
+                thriftTypeHolder,
                 name,
                 fieldType,
                 injections.build(),

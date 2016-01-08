@@ -42,6 +42,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -67,6 +68,7 @@ import static com.facebook.swift.codec.metadata.ThriftType.set;
 import static com.facebook.swift.codec.metadata.ThriftType.struct;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.concat;
+import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Iterables.transform;
 
 import static java.lang.reflect.Modifier.isStatic;
@@ -218,21 +220,29 @@ public class ThriftCatalog
         return thriftType;
     }
 
-    public ThriftTypeFuture getThriftTypeFuture(Type javaType)
+    public ThriftType getCachedThriftType(Type javaType)
     {
+        return typeCache.get(javaType);
+    }
+
+    public ThriftTypeHolder getThriftTypeHolder(FieldMetadata fieldMetadata)
+    {
+        Type javaType = fieldMetadata.getJavaType();
+
         ThriftType thriftType = typeCache.get(javaType);
         if (thriftType == null) {
-            if (stack.get().contains(javaType)) {
+            if (Objects.equals(true, fieldMetadata.isRecursiveReference())) {
                 // recursion: return an unresolved ThriftTypeFuture
-                return new ThriftTypeFuture(javaType, this);
+                return new RecursiveThriftTypeHolder(this, javaType);
             }
-            else {
+            else
+            {
                 thriftType = getThriftTypeUncached(javaType);
                 typeCache.putIfAbsent(javaType, thriftType);
             }
         }
         // return a resolved ThriftTypeFuture
-        return new ThriftTypeFuture(thriftType);
+        return new DefaultThriftTypeHolder(thriftType);
     }
 
     private ThriftType getThriftTypeUncached(Type javaType)

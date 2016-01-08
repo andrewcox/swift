@@ -10,7 +10,7 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing perm7ions and limitations
+ * License for the specific language governing permissions and limitations
  * under the License.
  */
 package com.facebook.swift.codec.metadata;
@@ -58,42 +58,6 @@ public class ThriftType
     public static ThriftType struct(ThriftStructMetadata structMetadata)
     {
         return new ThriftType(structMetadata);
-    }
-
-    public static ThriftType recursivestruct(Type structType, ThriftCatalog catalog)
-    {
-        return new ThriftType(structType, new Future<ThriftStructMetadata>()
-        {
-            @Override
-            public boolean cancel(boolean mayInterruptIfRunning)
-            {
-                throw new IllegalStateException("Call to unimplemented config method");
-            }
-
-            @Override
-            public boolean isCancelled()
-            {
-                throw new IllegalStateException("Call to unimplemented config method");
-            }
-
-            @Override
-            public boolean isDone()
-            {
-                throw new IllegalStateException("Call to unimplemented config method");
-            }
-
-            @Override
-            public ThriftStructMetadata get() throws InterruptedException, ExecutionException
-            {
-                return catalog.getThriftStructMetadata(structType);
-            }
-
-            @Override
-            public ThriftStructMetadata get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
-            {
-                throw new IllegalStateException("Call to unimplemented config method");
-            }
-        });
     }
 
     public static <K, V> ThriftType map(ThriftType keyType, ThriftType valueType)

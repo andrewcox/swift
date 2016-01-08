@@ -18,7 +18,7 @@ package com.facebook.swift.codec;
 @ThriftStruct("Bonk")
 public final class BonkField
 {
-    @ThriftField(1)
+    @ThriftField(value = 1, idlAnnotations = { @ThriftIdlAnnotation(key = "testkey", value = "testvalue") })
     public String message;
 
     @ThriftField(2)

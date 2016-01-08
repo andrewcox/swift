@@ -42,6 +42,7 @@ import org.testng.annotations.Test;
 
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
+import java.util.IllegalFormatException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -430,14 +431,41 @@ public abstract class AbstractThriftCodecManagerTest
     }
 
     @Test
-    public void testSimpleRecursiveStruct()
+    public void testRecursiveStructWithSwiftAnnotation()
             throws Exception
     {
-        SimpleRecursiveThriftStruct recursiveObject = new SimpleRecursiveThriftStruct();
+        RecursiveThriftStruct.WithSwiftRecursiveAnnotation recursiveObject = new RecursiveThriftStruct.WithSwiftRecursiveAnnotation();
         recursiveObject.data = "parent";
-        recursiveObject.child = new SimpleRecursiveThriftStruct();
+        recursiveObject.child = new RecursiveThriftStruct.WithSwiftRecursiveAnnotation();
         recursiveObject.child.data = "child";
+        recursiveObject.child.child = new RecursiveThriftStruct.WithSwiftRecursiveAnnotation();
+        recursiveObject.child.child.data = "grandchild";
+        testRoundTripSerialize(recursiveObject, new TCompactProtocol.Factory());
+    }
 
+    @Test
+    public void testRecursiveStructWithIdlAnnotation()
+            throws Exception
+    {
+        RecursiveThriftStruct.WithIdlRecursiveAnnotation recursiveObject = new RecursiveThriftStruct.WithIdlRecursiveAnnotation();
+        recursiveObject.data = "parent";
+        recursiveObject.child = new RecursiveThriftStruct.WithIdlRecursiveAnnotation();
+        recursiveObject.child.data = "child";
+        recursiveObject.child.child = new RecursiveThriftStruct.WithIdlRecursiveAnnotation();
+        recursiveObject.child.child.data = "grandchild";
+        testRoundTripSerialize(recursiveObject, new TCompactProtocol.Factory());
+    }
+
+    @Test(expectedExceptions = {IllegalArgumentException.class})
+    public void testRecursiveStructWithoutRecursiveAnnotation()
+            throws Exception
+    {
+        RecursiveThriftStruct.WithoutRecursiveAnnotation recursiveObject = new RecursiveThriftStruct.WithoutRecursiveAnnotation();
+        recursiveObject.data = "parent";
+        recursiveObject.child = new RecursiveThriftStruct.WithoutRecursiveAnnotation();
+        recursiveObject.child.data = "child";
+        recursiveObject.child.child = new RecursiveThriftStruct.WithoutRecursiveAnnotation();
+        recursiveObject.child.child.data = "grandchild";
         testRoundTripSerialize(recursiveObject, new TCompactProtocol.Factory());
     }
 
