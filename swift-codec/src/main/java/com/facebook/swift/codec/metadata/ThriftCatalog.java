@@ -119,9 +119,9 @@ public class ThriftCatalog
     }
 
     /**
-     * Add the @ToThrift and @FromThrift coercions in the specified class to this catalog.  All
-     * coercions must be symmetrical, so ever @ToThrift method must have a corresponding @FromThrift
-     * method.
+     * Add the @ToThrift and @FromThrift coercions in the specified class to this catalog.
+     * All coercions must be symmetrical, so every @ToThrift method must have a
+     * corresponding @FromThrift method.
      */
     public void addDefaultCoercions(Class<?> coercionsClass)
     {
