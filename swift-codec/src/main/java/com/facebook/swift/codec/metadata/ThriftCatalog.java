@@ -308,10 +308,15 @@ public class ThriftCatalog
 
     public ThriftTypeReference getFieldThriftTypeReference(FieldMetadata fieldMetadata)
     {
+        Boolean isRecursive = fieldMetadata.isRecursiveReference();
+
+        if (isRecursive == null) {
+            throw new IllegalStateException(
+                    "Field normalization should have set a non-null value for isRecursiveReference");
+        }
+
         return getThriftTypeReference(fieldMetadata.getJavaType(),
-                                      fieldMetadata.isRecursiveReference() ?
-                                              Recursiveness.FORCED :
-                                              Recursiveness.NOT_ALLOWED);
+                                      isRecursive ? Recursiveness.FORCED : Recursiveness.NOT_ALLOWED);
     }
 
     public ThriftTypeReference getCollectionElementThriftTypeReference(Type javaType)
