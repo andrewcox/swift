@@ -18,6 +18,7 @@ package com.facebook.swift.service.metadata;
 import com.facebook.swift.codec.ThriftField;
 import com.facebook.swift.codec.ThriftIdlAnnotation;
 import com.facebook.swift.codec.ThriftStruct;
+import com.facebook.swift.codec.metadata.DefaultThriftTypeReference;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
 import com.facebook.swift.codec.metadata.ThriftConstructorInjection;
 import com.facebook.swift.codec.metadata.ThriftExtraction;
@@ -147,8 +148,8 @@ public class ThriftMethodMetadata
                     parameterId,
                     isLegacyId,
                     parameterRequiredness,
-                    thriftType,
                     parameterIdlAnnotations,
+                    new DefaultThriftTypeReference(thriftType),
                     parameterName,
                     THRIFT_FIELD,
                     ImmutableList.of(parameterInjection),
