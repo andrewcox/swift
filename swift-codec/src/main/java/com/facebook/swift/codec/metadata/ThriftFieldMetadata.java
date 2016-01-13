@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.facebook.swift.codec.ThriftField.RECURSIVE_REFERENCE_ANNOTATION_NAME;
 import static com.facebook.swift.codec.ThriftField.Requiredness;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
