@@ -291,6 +291,8 @@ public class ThriftCatalog
 
         if (ListenableFuture.class.isAssignableFrom(rawType)) {
             Type returnType = getFutureReturnType(javaType);
+            // TODO: check that we aren't recursing through multiple futures
+            // TODO: find a way to restrict this to return values only
             return getThriftType(returnType);
         }
 
