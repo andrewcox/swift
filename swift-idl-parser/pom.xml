@@ -56,13 +56,18 @@
       <artifactId>testng</artifactId>
       <scope>test</scope>
     </dependency>
-    
+
+    <dependency>
+      <groupId>com.facebook.swift</groupId>
+      <artifactId>swift-annotations</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>com.facebook.swift</groupId>
       <artifactId>swift-test-utils</artifactId>
       <scope>test</scope>
     </dependency>
-  
+
   </dependencies>
 
   <build>
