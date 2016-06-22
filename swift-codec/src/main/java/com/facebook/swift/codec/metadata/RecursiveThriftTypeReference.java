@@ -54,15 +54,14 @@ public class RecursiveThriftTypeReference implements ThriftTypeReference
     @Override
     public ThriftType get()
     {
-        ThriftType resolvedType = catalog.getThriftTypeFromCache(javaType);
-        if (resolvedType == null) {
-            throw new UnsupportedOperationException(
-                String.format(
-                    "Attempted to resolve a recursive reference to type '%s' before the " +
-                    "referenced type was cached (most likely a recursive type support bug)",
-                    javaType.getTypeName()));
-        }
-        return resolvedType;
+        // TODO: The first time we build metadata for a type, we try to fully resolve
+        // recursive dependencies, and we never call this while building the types. So
+        // usually we could assert the type is already resolved and cached at this point.
+        // But because we put these references in a metadata cache which is not thread-local
+        // we can end up with a race condition if another thread tries to load the same type
+        // while this thread has created a reference for it in the process of handling another
+        // type, and hasn't finished fully resolving all the references.
+        return catalog.getThriftType(javaType);
     }
 
     @Override
